@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no"/>
+    <title>Visor USA</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/3.19/esri/css/esri.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.19/esri/themes/calcite/esri/esri.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.19/dijit/themes/claro/claro.css">
+
+    <style>
+      html, body, .container, #map {
+      height:100%;
+      width:100%;
+      margin:0;
+      padding:0;
+      margin:0;
+      font-family: "Open Sans";
+      font-size: 2px;
+      }
+
+      #search {
+       display: block;
+       position: absolute;
+       z-index: 2;
+       top: 20px;
+       left: 74px;
+      }
+      #map {
+          padding:0;
+      }
+      #layerListPane{
+          width:25%;
+      }
+      .esriLayer{
+        background-color: #fff;
+      }
+      .esriLayerList .esriList{
+          border-top:none;
+      }
+      .esriLayerList .esriTitle {
+        background-color: #fff;
+        border-bottom:none;
+      }
+      .esriLayerList .esriList ul{
+        background-color: #fff;
+      }
+      #HomeButton {
+         position: absolute;
+         top: 95px;
+         left: 20px;
+         z-index: 50;
+       }
+       #BasemapToggle {
+        position: absolute;
+        top: 80%;
+        left: : 40px;
+        z-index: 50;
+      }
+    </style>
+    
+    <script>var dojoConfig = { parseOnLoad: true };</script>
+    <script src="https://js.arcgis.com/3.19/"></script>
+    <script>
+
+      var map;
+      var urlDynamicService = "http://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer";
+
+      require(["esri/map",
+      "esri/layers/ArcGISDynamicMapServiceLayer",
+      "esri/dijit/Search",
+      "esri/arcgis/utils",
+      "esri/dijit/LayerList",
+      "esri/layers/FeatureLayer",
+      "esri/InfoTemplate",
+      "esri/dijit/HomeButton",
+      "esri/dijit/BasemapToggle",
+      "esri/dijit/BasemapGallery",
+      "dojo/parser",
+      // no tienen nada en fuction
+      "dijit/layout/BorderContainer",
+      "dijit/layout/ContentPane",
+       "dojo/domReady!"],
+       function(Map,
+         ArcGISDynamicMapServiceLayer,
+        Search,
+        arcgisUtils,
+        LayerList,
+        FeatureLayer,
+        InfoTemplate,
+        HomeButton,
+        BasemapToggle,
+        BasemapGallery,
+        parser) {
+           parser.parse();
+
+          map = new Map("map", {
+           //For full list of pre-defined basemaps, navigate to http://arcg.is/1JVo6Wd
+           basemap: "topo",
+          center: [-122.45, 37.75], // longitude, latitude
+          zoom: 2
+        });
+
+        // Widget home
+        var home = new HomeButton({
+        map: map
+        }, "HomeButton");
+        home.startup();
+
+        // Widget que cambia el mapa base
+        var toggle = new BasemapToggle({
+        map: map,
+        basemap: "satellite"
+        }, "BasemapToggle");
+        toggle.startup();
+
+        // Widget galeria de mapas base
+        var basemapGallery = new BasemapGallery({
+       showArcGISBasemaps: true,
+         map: map
+       }, "basemapGallery");
+       basemapGallery.startup();
+
+       basemapGallery.on("error", function(msg) {
+         console.log("basemap gallery error:  ", msg);
+       });
+
+      // cargamos la capa dinamica con el enlace URL
+      var dynamicLayer = new ArcGISDynamicMapServiceLayer(
+          urlDynamicService,
+        {id:"USA",
+        opacity:0.7});
+
+        map.addLayer(dynamicLayer);
+
+        // widget lista de capas
+        var layerList = new LayerList({
+            map: map,
+            showLegend: true,
+            showSubLayers: true,
+            showOpacitySlider: true,
+            layers: [{
+              layer: dynamicLayer
+            }]
+          },"layerList");
+
+        layerList.startup(); //inica el widget
+
+        // BUSCADOR
+        var infoTemplateCities = new InfoTemplate("Attributes","Nombre de la ciudad: ${areaname} <br> Poblacion: ${pop2000}");
+        var infoTemplateState = new InfoTemplate("Attributes","Nombre del estado: ${state_name} <br> Poblacion: ${pop2000}");
+
+        // Buscador simple de ESRI
+        var search = new Search({
+            map: map,
+            enableButtonMode: true,
+            enableInfoWindow: true,
+            showInfoWindowOnSelect: true,
+             }, "search");
+
+        // añadimos al buscador dos fuentes de busqueda
+        var sources = search.get("sources");
+            sources.push({
+              featureLayer: new FeatureLayer("http://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/0"),
+              searchFields: ["areaname"],
+              displayField: "areaname",
+              suggestionTemplate: "${areaname}",
+              exactMatch: false,
+              outFields: ["*"],
+              placeholder: "introduce el nombre de una ciudad",
+              name: "Cities",
+              placeholder: "cities",
+              infoTemplate: infoTemplateCities,
+              maxResults: 6,
+              maxSuggestions: 6,
+              enableSuggestions: true,
+              minCharacters: 0
+            } ,
+            {
+              featureLayer: new FeatureLayer("http://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer/2"),
+              searchFields: ["state_name"],
+              displayField: "state_name",
+              suggestionTemplate: "${state_name}",
+              exactMatch: false,
+              outFields: ["*"],
+              placeholder: "introduce el nombre de un estado",
+              name: "States",
+              placeholder: "States",
+              infoTemplate: infoTemplateState,
+              maxResults: 6,
+              maxSuggestions: 6,
+              enableSuggestions: true,
+              minCharacters: 0
+            });
+
+             search.set("sources", sources);
+             search.startup(); //inica el widget
+
+  });
+
+    </script>
+
+  </head>
+
+  <body class="claro">
+
+    <div class="container" data-dojo-type="dijit/layout/BorderContainer"
+    data-dojo-props="design:'headline',gutters:false">
+    <div id="layerListPane" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'right'">
+        <div id="layerList"></div>
+    </div>
+    <div id="map" data-dojo-type="dijit/layout/ContentPane" data-dojo-props="region:'center'"></div>
+    </div>
+
+    <div id="search"></div>
+    <div id="HomeButton"></div>
+    <div id="BasemapToggle"></div>
+
+   <div style="position:absolute; left:20px; top:250px; z-Index:999;">
+    <div data-dojo-type="dijit/TitlePane"
+      data-dojo-props="title:'Switch Basemap', closable:false, open:false">
+      <div data-dojo-type="dijit/layout/ContentPane" style="width:380px; height:280px; overflow:auto;">
+        <div id="basemapGallery"></div>
+     </div>
+    </div>
+   </div>
+
+
+
+
+
+
+  </body>
+</html>
